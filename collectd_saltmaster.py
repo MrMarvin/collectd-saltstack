@@ -16,6 +16,7 @@ class SaltMasterCollecter:
     self.runner = salt.runner.RunnerClient(self.salt_opts)
     self.minions_up = None
     self.minions_down = None
+    self.do_update = True
 
   def read(self, data=None):
     if self.minions_up is not None:
@@ -39,13 +40,13 @@ class SaltMasterCollecter:
 
   def update(self):
     try:
+      time.sleep(10)
       self.minions_up   = len(self.runner.cmd('manage.up', []))
       self.minions_down = len(self.runner.cmd('manage.down', []))
     except:
       collectd.warning("SaltMasterCollector: Got exception while updating values. Salt-Master seems not to be running! Setting values to None.")
       self.minions_up = None
       self.minions_down = None
-      time.sleep(10)
 
 def configer(ObjConfiguration):
   collectd.debug('SaltMasterCollector: Configuring')
@@ -62,15 +63,20 @@ def initer():
 
 def updater():
   global collecter
-  while True:
+  while collecter.do_update:
     collecter.update()
 
 def reader():
   global collecter
   collecter.read()
 
+def shutdowner():
+  global collecter
+  collecter.do_update = False
+
 collecter = None
 
 collectd.register_config(configer)
-collectd.register_init(initer);
-collectd.register_read(reader);
+collectd.register_init(initer)
+collectd.register_read(reader)
+collectd.register_shutdown(shutdowner)
